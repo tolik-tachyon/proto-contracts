@@ -6,6 +6,8 @@ option go_package = "github.com/tolik-tachyon/proto-generated/paymentpb";
 
 service PaymentService {
   rpc ProcessPayment (PaymentRequest) returns (PaymentResponse);
+
+  rpc SubscribePaymentStatus (PaymentRequest) returns (stream PaymentResponse);
 }
 
 message PaymentRequest {
