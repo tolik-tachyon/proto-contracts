@@ -2,36 +2,44 @@ name: Generate Protobuf
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   generate:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install Protoc
         run: |
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
-      - name: Install Go plugins
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Install plugins
         run: |
           go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
-      - name: Generate Go code
+      - name: Add Go bin to PATH
+        run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Generate
         run: |
           mkdir -p out
-
           protoc \
             --go_out=out \
+            --go_opt=paths=source_relative \
             --go-grpc_out=out \
+            --go-grpc_opt=paths=source_relative \
             payment/payment.proto
 
-      - name: Push to proto-generated repo
+      - name: Push
         env:
           TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
