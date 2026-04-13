@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package payment;
+package paymentpb;
 
 option go_package = "github.com/tolik-tachyon/proto-generated/paymentpb";
 
