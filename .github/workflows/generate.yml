@@ -17,25 +17,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-
-      - name: Install protoc plugins
+      - name: Install Go plugins
         run: |
           go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
       - name: Generate Go code
         run: |
-          mkdir -p proto-generated
+          mkdir -p out
 
           protoc \
-            --go_out=proto-generated \
-            --go_opt=paths=source_relative \
-            --go-grpc_out=proto-generated \
-            --go-grpc_opt=paths=source_relative \
+            --go_out=out \
+            --go-grpc_out=out \
             payment/payment.proto
 
       - name: Push to proto-generated repo
@@ -47,13 +40,10 @@ jobs:
 
           git clone https://x-access-token:${TOKEN}@github.com/tolik-tachyon/proto-generated.git
 
+          rm -rf proto-generated/* || true
+          cp -r out/* proto-generated/
+
           cd proto-generated
-          git pull --rebase || true
-
-          rm -rf ./*
-
-          cp -r ../proto-generated/. .
-
           git add .
           git commit -m "auto generate proto" || echo "no changes"
           git push
