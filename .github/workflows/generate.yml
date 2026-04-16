@@ -29,6 +29,7 @@ jobs:
       - name: Add Go bin to PATH
         run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
+      # ✅ FIXED GENERATION (главное исправление)
       - name: Generate
         run: |
           rm -rf paymentpb
@@ -36,10 +37,10 @@ jobs:
 
           protoc \
             --go_out=. \
-            --go-grpc_out=. \
             --go_opt=paths=source_relative \
+            --go-grpc_out=. \
             --go-grpc_opt=paths=source_relative \
-            payment/payment.proto
+          payment/payment.proto
 
       - name: Checkout generated repo
         run: |
@@ -47,7 +48,8 @@ jobs:
 
       - name: Verify output
         run: |
-          ls -R paymentpb
+          echo "=== generated files ==="
+          ls -R paymentpb || (echo "NO GENERATED FILES" && exit 1)
 
       - name: Sync files
         run: |
