@@ -35,8 +35,8 @@ jobs:
           mkdir -p paymentpb
 
           protoc \
-            --go_out=paymentpb \
-            --go-grpc_out=paymentpb \
+            --go_out=. \
+            --go-grpc_out=. \
             payment/payment.proto
 
       - name: Checkout generated repo
