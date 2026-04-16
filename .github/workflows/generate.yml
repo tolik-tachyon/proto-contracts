@@ -31,36 +31,29 @@ jobs:
 
       - name: Generate
         run: |
+          rm -rf out
           mkdir -p out
 
           protoc \
             --go_out=out \
-            --go_opt=paths=source_relative \
             --go-grpc_out=out \
-            --go-grpc_opt=paths=source_relative \
             payment/payment.proto
 
-      - name: Prepare output
+      - name: Checkout generated repo
         run: |
-          rm -rf proto-generated-temp
-          mkdir -p proto-generated-temp/paymentpb
-          cp -r out/* proto-generated-temp/paymentpb/
+          git clone https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/tolik-tachyon/proto-generated.git
 
-      - name: Push
-        env:
-          TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Sync files
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-
-          git clone https://x-access-token:${TOKEN}@github.com/tolik-tachyon/proto-generated.git
-
-          rm -rf proto-generated/paymentpb || true
+          rm -rf proto-generated/paymentpb
           mkdir -p proto-generated/paymentpb
+          cp -r out/github.com/tolik-tachyon/proto-generated/paymentpb/* proto-generated/paymentpb/
 
-          cp -r proto-generated-temp/paymentpb/* proto-generated/paymentpb/
-
+      - name: Commit & push
+        run: |
           cd proto-generated
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
           git add .
           git commit -m "auto generate proto" || echo "no changes"
           git push
