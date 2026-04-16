@@ -35,13 +35,18 @@ jobs:
           mkdir -p paymentpb
 
           protoc \
-            --go_out=. \
-            --go-grpc_out=. \
+            --go_out=paymentpb \
+            --go-grpc_out=paymentpb \
             payment/payment.proto
 
       - name: Checkout generated repo
         run: |
           git clone https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/tolik-tachyon/proto-generated.git
+
+      - name: Verify output
+        run: |
+          echo "=== generated files ==="
+          ls -R paymentpb || (echo "NO GENERATED FILES" && exit 1)
 
       - name: Sync files
         run: |
@@ -60,6 +65,6 @@ jobs:
           cd proto-generated
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add . 
+          git add .
           git commit -m "auto generate proto" || echo "no changes"
           git push
