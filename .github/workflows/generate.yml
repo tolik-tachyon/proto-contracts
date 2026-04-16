@@ -46,7 +46,7 @@ jobs:
 
           git clone https://x-access-token:${TOKEN}@github.com/tolik-tachyon/proto-generated.git
 
-          rm -rf proto-generated/* || true
+          find proto-generated -mindepth 1 ! -name "go.mod" -exec rm -rf {} +
           cp -r out/* proto-generated/
 
           cd proto-generated
