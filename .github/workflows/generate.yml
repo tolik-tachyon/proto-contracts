@@ -31,12 +31,12 @@ jobs:
 
       - name: Generate
         run: |
-          rm -rf out
-          mkdir -p out
+          rm -rf paymentpb
+          mkdir -p paymentpb
 
           protoc \
-            --go_out=out \
-            --go-grpc_out=out \
+            --go_out=. \
+            --go-grpc_out=. \
             payment/payment.proto
 
       - name: Checkout generated repo
@@ -47,13 +47,19 @@ jobs:
         run: |
           rm -rf proto-generated/paymentpb
           mkdir -p proto-generated/paymentpb
-          cp -r out/github.com/tolik-tachyon/proto-generated/paymentpb/* proto-generated/paymentpb/
+          cp -r paymentpb/* proto-generated/paymentpb/
+
+      - name: Init Go module
+        run: |
+          cd proto-generated
+          go mod init github.com/tolik-tachyon/proto-generated || true
+          go mod tidy || true
 
       - name: Commit & push
         run: |
           cd proto-generated
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add .
+          git add . 
           git commit -m "auto generate proto" || echo "no changes"
           git push
