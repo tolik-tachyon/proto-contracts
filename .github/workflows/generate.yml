@@ -32,10 +32,19 @@ jobs:
       - name: Generate
         run: |
           mkdir -p out
+
           protoc \
-            --go_out=out --go_opt=module=github.com/tolik-tachyon/proto-generated \
-            --go-grpc_out=out --go-grpc_opt=module=github.com/tolik-tachyon/proto-generated \
+            --go_out=out \
+            --go_opt=paths=source_relative \
+            --go-grpc_out=out \
+            --go-grpc_opt=paths=source_relative \
             payment/payment.proto
+
+      - name: Prepare output
+        run: |
+          rm -rf proto-generated-temp
+          mkdir -p proto-generated-temp/paymentpb
+          cp -r out/* proto-generated-temp/paymentpb/
 
       - name: Push
         env:
@@ -46,8 +55,10 @@ jobs:
 
           git clone https://x-access-token:${TOKEN}@github.com/tolik-tachyon/proto-generated.git
 
-          find proto-generated -mindepth 1 ! -name "go.mod" -exec rm -rf {} +
-          cp -r out/* proto-generated/
+          rm -rf proto-generated/paymentpb || true
+          mkdir -p proto-generated/paymentpb
+
+          cp -r proto-generated-temp/paymentpb/* proto-generated/paymentpb/
 
           cd proto-generated
           git add .
