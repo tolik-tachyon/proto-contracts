@@ -29,6 +29,11 @@ jobs:
       - name: Add Go bin to PATH
         run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
+      - name: Check proto exists
+        run: |
+          ls -R
+          ls payment/payment.proto || (echo "❌ payment.proto NOT FOUND" && exit 1)
+
       - name: Generate
         run: |
           rm -rf paymentpb
@@ -39,14 +44,17 @@ jobs:
             --go-grpc_out=. \
             payment/payment.proto
 
+      - name: Verify output
+        run: |
+          echo "=== ROOT STRUCTURE ==="
+          ls -R
+
+          echo "=== PAYMENTPB ==="
+          ls -R paymentpb || (echo "❌ paymentpb is empty - generation failed" && exit 1)
+
       - name: Checkout generated repo
         run: |
           git clone https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/tolik-tachyon/proto-generated.git
-
-      - name: Verify output
-        run: |
-          echo "=== generated files ==="
-          ls -R paymentpb || (echo "NO GENERATED FILES" && exit 1)
 
       - name: Sync files
         run: |
