@@ -1,3 +1,4 @@
+proto-contracts/generate.yml
 name: Generate Protobuf
 
 on:
@@ -43,7 +44,10 @@ jobs:
 
       - name: Verify generation
         run: |
-          find . -name "*.pb.go" || (echo "NO GENERATED FILES" && exit 1)
+          echo "=== generated files ==="
+          find . -name "*.pb.go"
+
+          test -n "$(find . -name '*.pb.go')" || (echo "NO GENERATED FILES" && exit 1)
 
       - name: Clone target repo
         run: |
@@ -51,8 +55,9 @@ jobs:
 
       - name: Sync generated files
         run: |
-          rm -rf proto-generated/payment
-          cp -r payment proto-generated/
+          rm -rf proto-generated/paymentpb
+          mkdir -p proto-generated/paymentpb
+          cp -r ./payment/*.pb.go proto-generated/paymentpb/ || true
 
       - name: Init Go module
         run: |
@@ -65,6 +70,9 @@ jobs:
           cd proto-generated
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+
           git add .
+
           git commit -m "auto generate proto" || echo "no changes"
+
           git push origin main
