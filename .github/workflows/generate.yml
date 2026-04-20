@@ -2,60 +2,76 @@ name: Generate Protobuf
 
 on:
   push:
-    paths:
-      - "proto-contracts/**"
-      - ".github/workflows/generate.yml"
+    branches: ["main"]
+  workflow_dispatch:
 
 jobs:
   generate:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout current repo
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.23"
-
-      - name: Install protoc
+      - name: Install Protoc
         run: |
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
-      - name: Install Go protobuf plugins
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Install plugins
         run: |
           go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
-      - name: Clone generated repo
-        run: |
-          git clone https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/tolik-tachyon/proto-generated.git out
+      - name: Add Go bin to PATH
+        run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
-      - name: Generate Go code
+      - name: Generate protobuf
         run: |
-          mkdir -p out/paymentpb
           protoc \
-            --proto_path=proto-contracts/payment \
-            --go_out=out/paymentpb \
-            --go-grpc_out=out/paymentpb \
-            proto-contracts/payment/payment.proto
+            -I payment \
+            --go_out=. \
+            --go_opt=paths=source_relative \
+            --go-grpc_out=. \
+            --go-grpc_opt=paths=source_relative \
+            payment/payment.proto
 
-      - name: Init Go module if needed
+      - name: Verify generation
         run: |
-          cd out
-          if [ ! -f go.mod ]; then
-            go mod init github.com/tolik-tachyon/proto-generated
-          fi
-          go mod tidy
+          echo "=== generated files ==="
+          find . -name "*.pb.go"
 
-      - name: Commit and push changes
+          test -n "$(find . -name '*.pb.go')" || (echo "NO GENERATED FILES" && exit 1)
+
+      - name: Clone target repo
         run: |
-          cd out
+          git clone https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/tolik-tachyon/proto-generated.git
+
+      - name: Sync generated files
+        run: |
+          rm -rf proto-generated/paymentpb
+          mkdir -p proto-generated/paymentpb
+          cp -r ./payment/*.pb.go proto-generated/paymentpb/ || true
+
+      - name: Init Go module
+        run: |
+          cd proto-generated
+          go mod init github.com/tolik-tachyon/proto-generated || true
+          go mod tidy || true
+
+      - name: Commit & push
+        run: |
+          cd proto-generated
           git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.email "actions@github.com"
+
           git add .
-          git commit -m "update generated proto" || exit 0
-          git push
+
+          git commit -m "auto generate proto" || echo "no changes"
+
+          git push origin main
