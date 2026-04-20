@@ -13,15 +13,16 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install Protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
+          cache: false
+
+      - name: Install Protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
 
       - name: Install plugins
         run: |
@@ -31,9 +32,16 @@ jobs:
       - name: Add Go bin to PATH
         run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
+      - name: Prepare Go modules
+        run: |
+          go mod tidy
+          go mod download
+
       - name: Generate protobuf
         run: |
+          rm -rf gen
           mkdir -p gen
+
           protoc \
             -I . \
             --go_out=./gen \
@@ -59,12 +67,6 @@ jobs:
           mkdir -p proto-generated/paymentpb
           cp -r ./gen/*.pb.go proto-generated/paymentpb/
 
-      - name: Init Go module
-        run: |
-          cd proto-generated
-          go mod init github.com/tolik-tachyon/proto-generated || true
-          go mod tidy || true
-
       - name: Commit & push
         run: |
           cd proto-generated
@@ -74,5 +76,4 @@ jobs:
           git add .
 
           git commit -m "auto generate proto" || echo "no changes"
-
           git push origin main
