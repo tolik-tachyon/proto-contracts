@@ -5,6 +5,9 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   generate:
     runs-on: ubuntu-latest
@@ -31,9 +34,14 @@ jobs:
       - name: Add Go bin to PATH
         run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
+      # ----------------------------
+      # Generate protobuf safely
+      # ----------------------------
       - name: Generate protobuf
         run: |
+          rm -rf gen
           mkdir -p gen
+
           protoc \
             -I . \
             --go_out=gen \
@@ -42,24 +50,38 @@ jobs:
             --go-grpc_opt=paths=source_relative \
             payment/payment.proto
 
+      # ----------------------------
+      # Clone target repo
+      # ----------------------------
       - name: Clone target repo
         run: |
           git clone https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/tolik-tachyon/proto-generated.git
 
+      # ----------------------------
+      # Sync generated code
+      # ----------------------------
       - name: Sync generated files
         run: |
           rm -rf proto-generated/paymentpb
           mkdir -p proto-generated/paymentpb
           cp -r gen/payment/*.pb.go proto-generated/paymentpb/ || true
 
-      - name: Create Go module (clean + deterministic)
+      # ----------------------------
+      # Init Go module safely (fixes go.sum issue)
+      # ----------------------------
+      - name: Init Go module
         run: |
           cd proto-generated
 
-          echo "module github.com/tolik-tachyon/proto-generated" > go.mod
+          rm -f go.mod go.sum
+
+          go mod init github.com/tolik-tachyon/proto-generated
 
           go mod tidy
 
+      # ----------------------------
+      # Commit changes
+      # ----------------------------
       - name: Commit & push
         run: |
           cd proto-generated
@@ -70,4 +92,5 @@ jobs:
           git add .
 
           git commit -m "auto generate proto" || echo "no changes"
+
           git push origin main
