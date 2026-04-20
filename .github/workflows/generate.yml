@@ -1,4 +1,3 @@
-proto-contracts/generate.yml
 name: Generate Protobuf
 
 on:
