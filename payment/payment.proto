@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package paymentpb;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "github.com/tolik-tachyon/proto-generated/paymentpb";
 
 service PaymentService {
@@ -18,6 +20,7 @@ message PaymentRequest {
 message PaymentResponse {
   string status = 1;
   string transaction_id = 2;
+  google.protobuf.Timestamp updated_at = 3;
 }
 
 message ListPaymentRequest {
