@@ -5,9 +5,6 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   generate:
     runs-on: ubuntu-latest
@@ -21,13 +18,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
-      - name: Setup Go (disable cache to avoid go.sum issues)
+      - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
-          cache: false
 
-      - name: Install Go plugins
+      - name: Install plugins
         run: |
           go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
@@ -35,72 +31,47 @@ jobs:
       - name: Add Go bin to PATH
         run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
-      # -------------------------
-      # Generate protobuf
-      # -------------------------
       - name: Generate protobuf
         run: |
-          rm -rf gen
-          mkdir -p gen
-
           protoc \
             -I . \
-            --go_out=gen \
+            --go_out=. \
             --go_opt=paths=source_relative \
-            --go-grpc_out=gen \
+            --go-grpc_out=. \
             --go-grpc_opt=paths=source_relative \
             payment/payment.proto
 
-          echo "=== GENERATED FILES ==="
-          find gen
+      - name: Verify generation
+        run: |
+          echo "=== generated files ==="
+          find . -name "*.pb.go"
 
-          # FAIL FAST if nothing generated
-          test -n "$(find gen -name '*.pb.go')" || (echo "PROTO GENERATION FAILED" && exit 1)
+          test -n "$(find . -name '*.pb.go')" || (echo "NO GENERATED FILES" && exit 1)
 
-      # -------------------------
-      # Clone target repo
-      # -------------------------
       - name: Clone target repo
         run: |
           git clone https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/tolik-tachyon/proto-generated.git
 
-      # -------------------------
-      # Sync generated files
-      # -------------------------
       - name: Sync generated files
         run: |
           rm -rf proto-generated/paymentpb
           mkdir -p proto-generated/paymentpb
+          cp -r ./payment/*.pb.go proto-generated/paymentpb/ || true
 
-          find gen -name "*.pb.go" -exec cp {} proto-generated/paymentpb/ \;
-
-          echo "=== COPIED FILES ==="
-          ls -R proto-generated/paymentpb
-
-      # -------------------------
-      # Init Go module safely
-      # -------------------------
       - name: Init Go module
         run: |
           cd proto-generated
+          go mod init github.com/tolik-tachyon/proto-generated || true
+          go mod tidy || true
 
-          rm -f go.mod go.sum
-
-          go mod init github.com/tolik-tachyon/proto-generated
-
-          go mod tidy
-
-      # -------------------------
-      # Commit & push
-      # -------------------------
       - name: Commit & push
         run: |
           cd proto-generated
-
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
           git add .
 
           git commit -m "auto generate proto" || echo "no changes"
+
           git push origin main
