@@ -43,10 +43,7 @@ jobs:
 
       - name: Verify generation
         run: |
-          echo "=== generated files ==="
-          find . -name "*.pb.go"
-
-          test -n "$(find . -name '*.pb.go')" || (echo "NO GENERATED FILES" && exit 1)
+          find . -name "*.pb.go" || (echo "NO GENERATED FILES" && exit 1)
 
       - name: Clone target repo
         run: |
@@ -54,9 +51,8 @@ jobs:
 
       - name: Sync generated files
         run: |
-          rm -rf proto-generated/paymentpb
-          mkdir -p proto-generated/paymentpb
-          cp -r ./payment/*.pb.go proto-generated/paymentpb/ || true
+          rm -rf proto-generated/payment
+          cp -r payment proto-generated/
 
       - name: Init Go module
         run: |
@@ -71,7 +67,5 @@ jobs:
           git config user.email "actions@github.com"
 
           git add .
-
           git commit -m "auto generate proto" || echo "no changes"
-
           git push origin main
