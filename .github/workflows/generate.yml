@@ -33,20 +33,21 @@ jobs:
 
       - name: Generate protobuf
         run: |
+          mkdir -p gen
           protoc \
             -I . \
-            --go_out=. \
+            --go_out=./gen \
             --go_opt=paths=source_relative \
-            --go-grpc_out=. \
+            --go-grpc_out=./gen \
             --go-grpc_opt=paths=source_relative \
             payment/payment.proto
 
       - name: Verify generation
         run: |
           echo "=== generated files ==="
-          find . -name "*.pb.go"
+          find ./gen -name "*.pb.go"
 
-          test -n "$(find . -name '*.pb.go')" || (echo "NO GENERATED FILES" && exit 1)
+          test -n "$(find ./gen -name '*.pb.go')" || (echo "NO GENERATED FILES" && exit 1)
 
       - name: Clone target repo
         run: |
@@ -56,7 +57,7 @@ jobs:
         run: |
           rm -rf proto-generated/paymentpb
           mkdir -p proto-generated/paymentpb
-          cp -r ./payment/*.pb.go proto-generated/paymentpb/ || true
+          cp -r ./gen/*.pb.go proto-generated/paymentpb/
 
       - name: Init Go module
         run: |
