@@ -19,3 +19,18 @@ message PaymentResponse {
   string status = 1;
   string transaction_id = 2;
 }
+
+message ListPaymentRequest {
+    string status = 1;
+}
+
+message ListPaymentResponse {
+    repeated PaymentResponse payments = 1;
+}
+
+service PaymentService {
+    rpc ProcessPayment(PaymentRequest) returns (PaymentResponse);
+    rpc SubscribePaymentStatus(PaymentRequest) returns (stream PaymentResponse);
+
+    rpc ListPayment(ListPaymentRequest) returns (ListPaymentResponse);
+}
