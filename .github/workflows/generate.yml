@@ -3,26 +3,23 @@ name: Generate Protobuf
 on:
   push:
     branches: ["main"]
-  workflow_dispatch:
 
 jobs:
   generate:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
-          cache: false
+      - uses: actions/checkout@v4
 
       - name: Install Protoc
         run: |
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
 
       - name: Install plugins
         run: |
@@ -32,56 +29,44 @@ jobs:
       - name: Add Go bin to PATH
         run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
-      - name: Prepare Go modules
+      - name: Generate
         run: |
-          go mod tidy
-          go mod download
-
-      - name: Generate protobuf
-        run: |
-          set -e
-
-          rm -rf gen
-          mkdir -p gen
-
-          echo "Generating protobuf..."
+          rm -rf paymentpb
+          mkdir -p paymentpb
 
           protoc \
-            -I . \
-            --go_out=./gen \
+          -I . \
+            --go_out=out \
             --go_opt=paths=source_relative \
-            --go-grpc_out=./gen \
+            --go-grpc_out=out \
             --go-grpc_opt=paths=source_relative \
             payment/payment.proto
 
-          echo "Generated files:"
-          find ./gen || true
-
-      - name: Verify generation
-        run: |
-          echo "Checking .pb.go files..."
-          if [ -z "$(find ./gen -name '*.pb.go')" ]; then
-            echo "ERROR: NO GENERATED FILES FOUND"
-            exit 1
-          fi
-
-      - name: Clone target repo
+      - name: Checkout generated repo
         run: |
           git clone https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/tolik-tachyon/proto-generated.git
 
-      - name: Sync generated files
+      - name: Verify output
+        run: |
+          ls -R paymentpb
+
+      - name: Sync files
         run: |
           rm -rf proto-generated/paymentpb
           mkdir -p proto-generated/paymentpb
-          cp -r ./gen/*.pb.go proto-generated/paymentpb/
+          cp -r paymentpb/* proto-generated/paymentpb/
+
+      - name: Init Go module
+        run: |
+          cd proto-generated
+          go mod init github.com/tolik-tachyon/proto-generated || true
+          go mod tidy || true
 
       - name: Commit & push
         run: |
           cd proto-generated
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-
           git add .
-
           git commit -m "auto generate proto" || echo "no changes"
-          git push origin main
+          git push
